@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Prime App</title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- Tailwind CSS & FontAwesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #0b0f19; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .marquee-container {
+            overflow: hidden;
+            white-space: nowrap;
+            width: 100%;
+        }
+        .marquee-text {
+            display: inline-block;
+            padding-left: 100%;
+            animation: marquee 15s linear infinite;
+        }
+        @keyframes marquee {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(-100%, 0); }
+        }
+
+        .drive-wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+        }
+        .drive-wrapper iframe {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            width: 100%;
+            height: calc(100% + 80px);
+            border: 0;
+            pointer-events: auto;
+        }
+        /* Loader Animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loader-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #dc2626;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            animation: spin 0.8s linear infinite;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen max-w-md mx-auto shadow-2xl border-x border-gray-800 relative">
+
+    <!-- App Open Modal -->
+    <div id="appOpenModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-[100] flex items-center justify-center p-4 hidden">
+        <div class="bg-[#111827] border border-gray-800 rounded-2xl p-6 w-full max-w-sm text-center shadow-2xl relative">
+            <button onclick="closeModalOnly()" class="absolute top-3 right-3 w-8 h-8 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white rounded-full flex items-center justify-center text-sm transition border border-gray-700">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <h2 id="modalTitle" class="text-lg font-bold text-white mb-2 mt-2">Welcome Notice</h2>
+            <p class="text-xs text-gray-300 mb-6 leading-relaxed">Amader free service cholu rakhte sponsor link e visit korun othoba cross (×) button e chap diye bhitore প্রবেশ korun.</p>
+            
+            <button onclick="clickAdAndCloseModal()" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center space-x-2 text-sm">
+                <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                <span>Visit Sponsor Link</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Top Header -->
+    <header class="flex items-center justify-between p-4 bg-[#111827] sticky top-0 z-50 border-b border-gray-800">
+        <div class="flex items-center space-x-2">
+            <img id="appHeaderLogo" src="" alt="Logo" class="w-7 h-7 object-cover rounded-full hidden">
+            <i id="appHeaderIcon" class="fa-solid fa-play text-red-600 text-xl"></i>
+            <h1 id="appHeaderTitle" class="text-xl font-bold tracking-wide">Prime App</h1>
+        </div>
+        <div>
+            <a id="helpLineBtn" href="https://t.me/Owener07621" target="_blank" class="bg-gray-800 hover:bg-gray-700 text-xs px-3.5 py-1.5 rounded-full flex items-center space-x-1 border border-gray-700">
+                <i class="fa-solid fa-headset text-gray-400"></i>
+                <span>Help Line</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Notice Board -->
+    <div id="noticeContainer" class="bg-red-950/40 border-l-4 border-red-600 p-3 m-3 rounded-r-lg text-sm flex items-center space-x-2 text-red-200 hidden marquee-container">
+        <i class="fa-solid fa-bullhorn text-red-500 shrink-0 mr-2"></i>
+        <span id="noticeText" class="marquee-text font-medium"></span>
+    </div>
+
+    <!-- Banner Image -->
+    <div class="px-3 mb-4">
+        <div class="w-full h-44 bg-gray-800 rounded-xl overflow-hidden shadow-lg border border-gray-800">
+            <img id="bannerImage" src="https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?auto=format&fit=crop&w=800&q=80" alt="Banner" class="w-full h-full object-cover">
+        </div>
+    </div>
+
+    <!-- Search Box -->
+    <div class="px-3 mb-4">
+        <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </span>
+            <input type="text" id="searchInput" placeholder="Search serial or episode..." class="w-full bg-[#161f31] text-sm text-white pl-10 pr-4 py-2.5 rounded-xl border border-gray-800 focus:outline-none focus:border-red-600">
+        </div>
+    </div>
+
+    <!-- Dynamic Category Filters -->
+    <div class="px-3 mb-4">
+        <div id="categoryContainer" class="flex space-x-2 overflow-x-auto hide-scroll pb-1">
+            <button onclick="filterCategory('All')" class="category-btn bg-red-600 text-white text-xs px-4 py-2 rounded-full whitespace-nowrap font-medium transition">All Channels</button>
+        </div>
+    </div>
+
+    <!-- Latest Episodes Header -->
+    <div class="px-4 mb-2 flex justify-between items-center">
+        <h2 class="text-base font-semibold text-gray-200">Latest Episodes</h2>
+        <span id="videoCount" class="text-xs text-gray-400">0 Available</span>
+    </div>
+
+    <!-- Video List -->
+    <main class="px-3 flex-grow pb-10">
+        <div id="videoList" class="space-y-4">
+            <div class="text-center text-gray-500 py-10">Loading episodes...</div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-4 text-xs text-gray-500 border-t border-gray-800 mt-auto">
+        &copy; <span id="footerAppName">Prime App</span>. All Rights Reserved.
+    </footer>
+
+    <!-- Firebase Logic & Drive Fix Script -->
+    <script>
+        const firebaseConfig = {
+            databaseURL: "https://india-serial-default-rtdb.firebaseio.com/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let adsterraSmartLink = "https://www.profitablecpmratenetwork.com/d8qx4w6hki?key=3b410a77156ddb9cc2263c42cf013384";
+
+        function closeModalOnly() {
+            document.getElementById('appOpenModal').classList.add('hidden');
+        }
+
+        function clickAdAndCloseModal() {
+            document.getElementById('appOpenModal').classList.add('hidden');
+            if (adsterraSmartLink && adsterraSmartLink !== "#") {
+                window.open(adsterraSmartLink, '_blank');
+            }
+        }
+
+        let allVideos = [];
+
+        // Settings Listener
+        db.ref('settings').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                if (data.appName) {
+                    document.getElementById('appHeaderTitle').innerText = data.appName;
+                    document.getElementById('footerAppName').innerText = data.appName;
+                }
+                if (data.appLogoUrl && data.appLogoUrl.startsWith('http')) {
+                    const logoImg = document.getElementById('appHeaderLogo');
+                    logoImg.src = data.appLogoUrl;
+                    logoImg.classList.remove('hidden');
+                    document.getElementById('appHeaderIcon').classList.add('hidden');
+                }
+                if (data.notice) {
+                    document.getElementById('noticeContainer').classList.remove('hidden');
+                    document.getElementById('noticeText').innerText = data.notice;
+                }
+                if (data.bannerUrl && data.bannerUrl.startsWith('http')) {
+                    document.getElementById('bannerImage').src = data.bannerUrl;
+                }
+            }
+        });
+
+        // Categories Listener
+        db.ref('categories').on('value', (snapshot) => {
+            const catContainer = document.getElementById('categoryContainer');
+            let html = `<button onclick="filterCategory('All')" class="category-btn bg-red-600 text-white text-xs px-4 py-2 rounded-full whitespace-nowrap font-medium transition">All Channels</button>`;
+            
+            snapshot.forEach((childSnapshot) => {
+                const catName = childSnapshot.val().name;
+                html += `<button onclick="filterCategory('${catName}')" class="category-btn bg-[#161f31] text-gray-300 text-xs px-4 py-2 rounded-full whitespace-nowrap font-medium border border-gray-800 transition">${catName}</button>`;
+            });
+            catContainer.innerHTML = html;
+        });
+
+        // Videos Listener
+        db.ref('videos').on('value', (snapshot) => {
+            allVideos = [];
+            snapshot.forEach((childSnapshot) => {
+                let video = childSnapshot.val();
+                video.id = childSnapshot.key;
+                allVideos.push(video);
+            });
+            document.getElementById('videoCount').innerText = allVideos.length + ' Available';
+            displayVideos(allVideos);
+        });
+
+        // Play Google Drive Video with Loading Spinner
+        function playDirect(boxId, videoUrl) {
+            const container = document.getElementById(boxId);
+            let embedUrl = videoUrl;
+
+            if (videoUrl.includes('drive.google.com')) {
+                let fileId = '';
+                if (videoUrl.includes('/file/d/')) {
+                    fileId = videoUrl.split('/file/d/')[1].split('/')[0].split('?')[0];
+                } else if (videoUrl.includes('id=')) {
+                    fileId = videoUrl.split('id=')[1].split('&')[0];
+                }
+
+                if (fileId) {
+                    embedUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+                } else if (videoUrl.includes('/view')) {
+                    embedUrl = videoUrl.replace('/view', '/preview');
+                }
+            }
+
+            // Show Loading Spinner while Drive loads
+            container.innerHTML = `
+                <div class="drive-wrapper flex flex-col items-center justify-center bg-black">
+                    <div class="loader-spinner mb-2"></div>
+                    <span class="text-xs text-gray-400">Loading Video...</span>
+                    <iframe src="${embedUrl}" allow="autoplay" allowfullscreen class="absolute inset-0 w-full h-full opacity-0 transition-opacity duration-500" onload="this.style.opacity='1';"></iframe>
+                </div>
+            `;
+        }
+
+        // Display Videos List
+        function displayVideos(videos) {
+            const videoList = document.getElementById('videoList');
+            if (videos.length === 0) {
+                videoList.innerHTML = `<div class="text-center text-gray-500 py-10">Kono video pawa jayni!</div>`;
+                return;
+            }
+
+            let html = '';
+            videos.slice().reverse().forEach((v, index) => {
+                const boxId = `player_box_${index}`;
+                const thumb = (v.thumbnail && v.thumbnail.startsWith('http')) ? v.thumbnail : 'https://images.unsplash.com/photo-1574375927938-d5a98e8ffe85?auto=format&fit=crop&w=500&q=80';
+                
+                html += `
+                    <div class="bg-[#111827] border border-gray-800 rounded-2xl overflow-hidden shadow-md">
+                        <div id="${boxId}" class="relative w-full h-48 bg-black flex items-center justify-center">
+                            <img src="${thumb}" class="w-full h-full object-cover">
+                            <div onclick="playDirect('${boxId}', '${v.videoUrl}')" class="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer group">
+                                <div class="w-14 h-14 bg-red-600/90 rounded-full flex items-center justify-center text-white text-xl shadow-lg group-hover:scale-110 transition">
+                                    <i class="fa-solid fa-play ml-1"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-3">
+                            <h3 class="font-medium text-sm text-gray-100 line-clamp-2">${v.title}</h3>
+                            <div class="flex justify-between items-center mt-2">
+                                <span class="text-[11px] bg-red-950/60 text-red-400 px-2.5 py-1 rounded-md border border-red-900/40">Category: ${v.category || 'General'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            videoList.innerHTML = html;
+        }
+
+        // Category Filter
+        function filterCategory(category) {
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                if (btn.innerText === category || (category === 'All' && btn.innerText === 'All Channels')) {
+                    btn.classList.remove('bg-[#161f31]', 'text-gray-300', 'border', 'border-gray-800');
+                    btn.classList.add('bg-red-600', 'text-white');
+                } else {
+                    btn.classList.remove('bg-red-600', 'text-white');
+                    btn.classList.add('bg-[#161f31]', 'text-gray-300', 'border', 'border-gray-800');
+                }
+            });
+
+            if (category === 'All') {
+                displayVideos(allVideos);
+            } else {
+                const filtered = allVideos.filter(v => v.category === category);
+                displayVideos(filtered);
+            }
+        }
+
+        // Search Filter
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchText = e.target.value.toLowerCase();
+            const filtered = allVideos.filter(v => v.title.toLowerCase().includes(searchText));
+            displayVideos(filtered);
+        });
+    </script>
+</body>
+  </html>
